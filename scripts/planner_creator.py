@@ -1,5 +1,6 @@
 from datetime import date
 import datetime
+import json
 
 #Reading a json file and changing item name
 #import json
@@ -13,6 +14,11 @@ import datetime
 #		print("{}".format(item))
 #		#scribus.setItemName(item[0] + "_new", item[0])
 
+def read_configuration():
+	configFile = fileDialog("Select input configfile", "Json Files(*.json)")
+	with open(configFile) as config:
+		jsonconfig = json.load(config)
+	return jsonconfig
 
 
 # setitemname -> maybe to update item name instead of using copy
@@ -43,13 +49,25 @@ monthLbl = None
 dayLbl = None
 dayOfWeekLbl = None
 
-numberOfDays = int(scribus.valueDialog("Number of days: ", "The number of days to create in this planner", "31"))
+
+jsonConfig = read_configuration()
+monthLblName = jsonConfig.get("month", "defaultMonthLbl")
+dayLblName = jsonConfig.get("day", "defaultDay")
+weekdayLblName = jsonConfig.get("weekday", "defaultWeekD")
+
+month_format = jsonConfig.get("month_format", "%B")
+weekday_format = jsonConfig.get("weekday_format", "%A")
+
+numberOfDays = int(jsonConfig.get("no_of_days", "10"))
+#numberOfDays = int(scribus.valueDialog("Number of days: ", "The number of days to create in this planner", "31"))
 # Let's reset the progress bar
+counter = 1
 scribus.progressReset()
 scribus.progressTotal(numberOfDays)
 print("NoDays: {}".format(numberOfDays))
-inputStartDate = scribus.valueDialog("Start Date: ", "The start Date for this planner", str(date.today()))
-tdate = date.fromisoformat('2025-01-01')
+#inputStartDate = scribus.valueDialog("Start Date: ", "The start Date for this planner", str(date.today()))
+inpustStartDate = jsonConfig.get("start_date", "2025/01/01")
+#tdate = date.fromisoformat('2025-01-01')
 tdate = date.fromisoformat(str(inputStartDate))
 print("Input date: {}".format(tdate))
 if pagecount > 0:
@@ -59,32 +77,34 @@ if pagecount > 0:
 		print("Currently at page: {}".format(page))
 		scribus.gotoPage(page)
 		scribus.statusMessage("Creating page number: {}".format(page))
-		d = scribus.getPageItems()
 		docname = getDocName()
 		template_page = scribus.getMasterPage(1)
 		scribus.importPage(docname, tuple([(1)]))
 		d = scribus.getPageItems()
 		for item in d:
 			print(item)
-			if "MonthLbl" in item[0]:
+			if monthLblName in item[0]:
 				monthLbl = item
 				#l = scribus.getTextLength(item[0])
 				#scribus.selectText(0, l-1, item[0])
 				#scribus.deleteText(item[0])
-				monthName = tdate.strftime("%B")
+				monthName = tdate.strftime(month_format)
 				#updateText(monthName, item[0])
 				updateTextKeepLayout(monthName, item[0])
+				scribus.setItemName("{}{}".format(monthLblName, page), item[0])
 				#scribus.insertText(monthName, 0, item[0])
-				print("monthLbl")
-			if "WeekLbl" in item[0]:
+				print("Label name: {}".format(monthLblName))
+			if weekdayLblName in item[0]:
 				WeekDayLbl = item
-				weekDay = tdate.strftime("%A")
+				weekDay = tdate.strftime(weekday_format)
 				updateTextKeepLayout(weekDay, item[0])
-				print("WeekDayLbl")
-			if "DayLbl" in item[0]:
+				scribus.setItemName("{}{}".format(weekdayLblName, page), item[0])
+				print("Label name: {}".format(weekdayLblName))
+			if dayLblName in item[0]:
 				dayLbl = item
 				updateTextKeepLayout(str(tdate.day), item[0])
-				print("DayLbl")
+				scribus.setItemName("{}{}".format(dayLblName, page), item[0])
+				print("Labeel name: {}".format(dayLblName))
 		scribus.redrawAll()
 		tdate += datetime.timedelta(days=1)
 		print("Date: {}".format(tdate))
